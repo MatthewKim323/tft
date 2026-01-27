@@ -1,33 +1,41 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ShaderBackground from '../components/ShaderBackground';
+import FluidCursor from '../components/FluidCursor';
 import OrbLoader from '../components/OrbLoader';
-import '../App.css';
+import './Home.css';
 
 export default function Home({ isInitialLoad = false, onLoadComplete }) {
   const [isLoading, setIsLoading] = useState(isInitialLoad);
   const [showContent, setShowContent] = useState(!isInitialLoad);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
 
   useEffect(() => {
     if (isInitialLoad) {
-      // Show loader on initial load or refresh
       setIsLoading(true);
       setShowContent(false);
     } else {
-      // On navigation, just fade in smoothly
       setIsLoading(false);
-      // Small delay for smooth transition
       setTimeout(() => {
         setShowContent(true);
       }, 100);
     }
+
+    const handleMouseMove = (e) => {
+      setMousePos({
+        x: (e.clientX / window.innerWidth) * 100,
+        y: (e.clientY / window.innerHeight) * 100
+      });
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [isInitialLoad]);
 
   const handleLoadComplete = () => {
     setIsLoading(false);
     setTimeout(() => {
       setShowContent(true);
-      // Notify parent that home has loaded
       if (onLoadComplete) {
         onLoadComplete();
       }
@@ -43,28 +51,39 @@ export default function Home({ isInitialLoad = false, onLoadComplete }) {
       ) : (
         <>
           <ShaderBackground />
+          <FluidCursor />
           <div className="shader-overlay"></div>
-          <div className={`landing-content ${showContent ? 'visible' : ''}`}>
-            <div className="landing-hero">
-              <h1 className="landing-title">
-                <span className="title-word" style={{ '--delay': '0s' }}>TFT</span>
-                <span className="title-word" style={{ '--delay': '0.15s' }}>BOT</span>
-              </h1>
-              
-              <div className="title-underline" style={{ '--delay': '0.3s' }}></div>
-              
-              <p className="landing-tagline" style={{ '--delay': '0.45s' }}>
-                Three-layer intelligence system
-              </p>
-            </div>
+          
+          <div 
+            className={`home-page ${showContent ? 'visible' : ''}`}
+            style={{ '--mouse-x': `${mousePos.x}%`, '--mouse-y': `${mousePos.y}%` }}
+          >
+            {/* Grid overlay */}
+            <div className="grid-overlay"></div>
+            
+            <div className="home-content">
+              {/* Main hero section */}
+              <div className="hero-section">
+                <h1 className="hero-title">
+                  <span className="title-line">
+                    <span className="title-word" style={{ '--delay': '0s' }}>tft</span>
+                    <span className="title-word accent" style={{ '--delay': '0.1s' }}>bot</span>
+                  </span>
+                </h1>
+                
+                <p className="hero-tagline">
+                  <span className="tagline-word" style={{ '--delay': '0.2s' }}>three-layer</span>
+                  <span className="tagline-word" style={{ '--delay': '0.25s' }}>intelligence</span>
+                  <span className="tagline-word" style={{ '--delay': '0.3s' }}>system</span>
+                </p>
 
-            <div className="landing-cta" style={{ '--delay': '0.6s' }}>
-              <Link to="/dashboard" className="cta-primary">
-                <span>Launch Dashboard</span>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M7 4L13 10L7 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </Link>
+                <div className="hero-cta" style={{ '--delay': '0.4s' }}>
+                  <Link to="/dashboard" className="cta-button">
+                    <span className="cta-text">launch dashboard</span>
+                    <span className="cta-icon">→</span>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </>
