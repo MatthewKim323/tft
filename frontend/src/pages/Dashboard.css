@@ -6,7 +6,7 @@
   padding-top: 6rem;
   opacity: 0;
   animation: pageSlideIn 0.5s ease-out forwards;
-  background: #000000;
+  background: transparent;
   overflow-x: hidden;
 }
 
@@ -35,23 +35,6 @@
   50% { opacity: 0.6; }
 }
 
-/* Spotlight effect */
-.dashboard-page::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(
-    circle 800px at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(183, 148, 246, 0.15) 0%,
-    transparent 60%
-  );
-  transition: opacity 0.3s ease;
-}
 
 @keyframes pageSlideIn {
   from {

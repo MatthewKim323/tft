@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ShaderBackground from '../components/ShaderBackground';
-import FluidCursor from '../components/FluidCursor';
 import OrbLoader from '../components/OrbLoader';
 import './Home.css';
 
@@ -51,7 +50,6 @@ export default function Home({ isInitialLoad = false, onLoadComplete }) {
       ) : (
         <>
           <ShaderBackground />
-          <FluidCursor />
           <div className="shader-overlay"></div>
           
           <div 

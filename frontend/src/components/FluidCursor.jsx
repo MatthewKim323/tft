@@ -23,18 +23,19 @@ export default function FluidCursor() {
     let config = {
       SIM_RESOLUTION: 128,
       DYE_RESOLUTION: 512,
-      DENSITY_DISSIPATION: 4.5,       // Fades faster
-      VELOCITY_DISSIPATION: 3,        // Fades faster
+      DENSITY_DISSIPATION: 6.5,       // Fades much faster
+      VELOCITY_DISSIPATION: 4.5,      // Fades much faster
       PRESSURE: 0.1,
       PRESSURE_ITERATIONS: 20,
       CURL: 2,                        // Less swirly
-      SPLAT_RADIUS: 0.08,             // Smaller splats
-      SPLAT_FORCE: 3000,              // Less force
+      SPLAT_RADIUS: 0.05,             // Much smaller splats
+      SPLAT_FORCE: 1200,              // Much less force
       SHADING: true,
       COLOR_UPDATE_SPEED: 10,
       PAUSED: false,
       BACK_COLOR: { r: 0, g: 0, b: 0 },
-      TRANSPARENT: true
+      TRANSPARENT: true,
+      MIN_MOVEMENT_THRESHOLD: 0.0005  // Minimum movement to trigger splat
     };
 
     let pointers = [new pointerPrototype()];
@@ -551,7 +552,9 @@ export default function FluidCursor() {
       let aspectRatio = canvas.width / canvas.height;
       pointer.deltaX = (pointer.texcoordX - pointer.prevTexcoordX) * (aspectRatio < 1 ? aspectRatio : 1);
       pointer.deltaY = (pointer.texcoordY - pointer.prevTexcoordY) / (aspectRatio > 1 ? aspectRatio : 1);
-      pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
+      // Only trigger splat if movement exceeds threshold (prevents blob on small movements)
+      const movementMagnitude = Math.sqrt(pointer.deltaX * pointer.deltaX + pointer.deltaY * pointer.deltaY);
+      pointer.moved = movementMagnitude > config.MIN_MOVEMENT_THRESHOLD;
     }
 
     // Subtle purple color palette

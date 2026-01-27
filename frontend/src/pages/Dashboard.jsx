@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import ShaderBackground from '../components/ShaderBackground';
-import FluidCursor from '../components/FluidCursor';
+import PixelBlast from '../components/PixelBlast';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const [selectedMetric, setSelectedMetric] = useState('winrate');
   const [isVisible, setIsVisible] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
   const [liveStats, setLiveStats] = useState({
     winRate: 67.3,
     avgPlacement: 3.2,
@@ -17,15 +15,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     setIsVisible(true);
-    
-    const handleMouseMove = (e) => {
-      setMousePos({
-        x: (e.clientX / window.innerWidth) * 100,
-        y: (e.clientY / window.innerHeight) * 100
-      });
-    };
-    
-    window.addEventListener('mousemove', handleMouseMove);
 
     // Simulate live data updates
     const interval = setInterval(() => {
@@ -38,7 +27,6 @@ export default function Dashboard() {
     }, 2000);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
       clearInterval(interval);
     };
   }, []);
@@ -61,15 +49,24 @@ export default function Dashboard() {
         </defs>
       </svg>
       
-      <ShaderBackground />
-      <FluidCursor />
-      <div className="shader-overlay"></div>
+      <PixelBlast
+        variant="square"
+        pixelSize={4}
+        color="#B794F6"
+        patternScale={2}
+        patternDensity={1}
+        enableRipples
+        rippleSpeed={0.4}
+        rippleThickness={0.12}
+        rippleIntensityScale={1.5}
+        speed={0.5}
+        edgeFade={0.25}
+        transparent
+      />
+
       <div 
         className={`dashboard-page ${isVisible ? 'visible' : ''}`}
-        style={{ '--mouse-x': `${mousePos.x}%`, '--mouse-y': `${mousePos.y}%` }}
       >
-        {/* Animated background grid */}
-        <div className="grid-overlay"></div>
         
         <div className="dashboard-container">
           <header className="dashboard-header">

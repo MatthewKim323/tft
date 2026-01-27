@@ -1,0 +1,15 @@
+.liquid-ether-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.liquid-ether-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
