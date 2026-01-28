@@ -355,16 +355,28 @@
   gap: 1rem;
 }
 
-.log-icon {
-  font-size: 1.5rem;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(183, 148, 246, 0.1);
-  border-radius: 12px;
+.log-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--indicator-color, #B794F6);
   flex-shrink: 0;
+  box-shadow: 
+    0 0 8px var(--indicator-color, #B794F6),
+    0 0 16px color-mix(in srgb, var(--indicator-color, #B794F6) 50%, transparent),
+    0 0 24px color-mix(in srgb, var(--indicator-color, #B794F6) 30%, transparent);
+  animation: logIndicatorPulse 2s ease-in-out infinite;
+}
+
+@keyframes logIndicatorPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
 }
 
 .log-meta {
@@ -701,10 +713,9 @@
     flex-wrap: wrap;
   }
   
-  .log-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
+  .log-indicator {
+    width: 10px;
+    height: 10px;
   }
   
   .board-grid {

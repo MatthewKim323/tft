@@ -46,6 +46,10 @@ export default function Dashboard() {
             <stop offset="0%" stopColor="#B794F6" />
             <stop offset="100%" stopColor="#805AD5" />
           </linearGradient>
+          <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#B794F6" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#B794F6" stopOpacity="0" />
+          </linearGradient>
         </defs>
       </svg>
       
@@ -134,14 +138,26 @@ export default function Dashboard() {
               <div className="card-glow"></div>
               <div className="glass-noise"></div>
               <div className="glass-content">
-                <div className="metric-icon-wrapper">
-                  <div className="metric-icon">🎯</div>
+                <div className="metric-header">
+                  <div className="metric-indicator"></div>
+                  <div className="metric-label">Avg Placement</div>
                 </div>
                 <div className="metric-value-wrapper">
                   <span className="metric-value">{liveStats.avgPlacement.toFixed(1)}</span>
+                  <span className="metric-trend up">↑ 0.8</span>
                 </div>
-                <div className="metric-label">Avg Placement</div>
-                <div className="metric-trend up">↑ 0.8</div>
+                <div className="metric-sparkline">
+                  <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+                    <polyline 
+                      className="sparkline-line"
+                      points="0,25 10,20 20,22 30,15 40,18 50,12 60,14 70,8 80,10 90,6 100,5"
+                    />
+                    <polyline 
+                      className="sparkline-fill"
+                      points="0,30 0,25 10,20 20,22 30,15 40,18 50,12 60,14 70,8 80,10 90,6 100,5 100,30"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
 
@@ -149,14 +165,26 @@ export default function Dashboard() {
               <div className="card-glow"></div>
               <div className="glass-noise"></div>
               <div className="glass-content">
-                <div className="metric-icon-wrapper">
-                  <div className="metric-icon">🎮</div>
+                <div className="metric-header">
+                  <div className="metric-indicator"></div>
+                  <div className="metric-label">Games</div>
                 </div>
                 <div className="metric-value-wrapper">
                   <span className="metric-value">{liveStats.games}</span>
+                  <span className="metric-trend">+23 this week</span>
                 </div>
-                <div className="metric-label">Games</div>
-                <div className="metric-trend">+23 this week</div>
+                <div className="metric-sparkline">
+                  <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+                    <polyline 
+                      className="sparkline-line"
+                      points="0,28 10,26 20,24 30,22 40,20 50,18 60,15 70,12 80,10 90,7 100,5"
+                    />
+                    <polyline 
+                      className="sparkline-fill"
+                      points="0,30 0,28 10,26 20,24 30,22 40,20 50,18 60,15 70,12 80,10 90,7 100,5 100,30"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
 
@@ -164,14 +192,26 @@ export default function Dashboard() {
               <div className="card-glow"></div>
               <div className="glass-noise"></div>
               <div className="glass-content">
-                <div className="metric-icon-wrapper">
-                  <div className="metric-icon">🧠</div>
+                <div className="metric-header">
+                  <div className="metric-indicator"></div>
+                  <div className="metric-label">Decision Accuracy</div>
                 </div>
                 <div className="metric-value-wrapper">
                   <span className="metric-value">{liveStats.accuracy.toFixed(1)}%</span>
+                  <span className="metric-trend up">↑ 5.2%</span>
                 </div>
-                <div className="metric-label">Decision Accuracy</div>
-                <div className="metric-trend up">↑ 5.2%</div>
+                <div className="metric-sparkline">
+                  <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+                    <polyline 
+                      className="sparkline-line"
+                      points="0,22 10,24 20,20 30,18 40,22 50,16 60,14 70,12 80,8 90,10 100,6"
+                    />
+                    <polyline 
+                      className="sparkline-fill"
+                      points="0,30 0,22 10,24 20,20 30,18 40,22 50,16 60,14 70,12 80,8 90,10 100,6 100,30"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
 

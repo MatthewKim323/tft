@@ -120,13 +120,13 @@ export default function Logs() {
     ? logEntries 
     : logEntries.filter(log => log.type === activeFilter);
 
-  const getTypeIcon = (type) => {
+  const getTypeColor = (type) => {
     switch(type) {
-      case 'decision': return '🎯';
-      case 'analysis': return '🔍';
-      case 'item': return '⚔️';
-      case 'economy': return '💰';
-      default: return '📋';
+      case 'decision': return '#B794F6';
+      case 'analysis': return '#63B3ED';
+      case 'item': return '#F6AD55';
+      case 'economy': return '#68D391';
+      default: return '#A0AEC0';
     }
   };
 
@@ -228,11 +228,10 @@ export default function Logs() {
                     <div className="glass-noise"></div>
                     <div className="log-content">
                       <div className="log-header">
-                        <div className="log-icon">{getTypeIcon(log.type)}</div>
+                        <div className="log-indicator" style={{ '--indicator-color': getTypeColor(log.type) }}></div>
                         <div className="log-meta">
                           <div className="log-title">{log.title}</div>
                           <div className="log-timestamp">
-                            <span className="timestamp-icon">⏱</span>
                             {log.timestamp}
                           </div>
                         </div>
