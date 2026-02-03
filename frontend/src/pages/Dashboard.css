@@ -4,10 +4,25 @@
   min-height: 100vh;
   padding: 1.5rem;
   padding-top: 6rem;
+  padding-bottom: 3rem; /* Add bottom padding for comfortable scrolling */
   opacity: 0;
   animation: pageSlideIn 0.5s ease-out forwards;
   background: transparent;
   overflow-x: hidden;
+  overflow-y: visible; /* Allow vertical overflow */
+}
+
+/* Add dim overlay behind dashboard content */
+.dashboard-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .dashboard-page.visible {
@@ -748,5 +763,116 @@
   
   .metric-value {
     font-size: 2rem;
+  }
+}
+
+/* Live Connection Status */
+.live-dot.disconnected {
+  background: rgba(239, 68, 68, 0.9);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.live-dot.connected {
+  background: rgba(72, 187, 120, 0.9);
+  box-shadow: 0 0 10px rgba(72, 187, 120, 0.5);
+}
+
+/* Game State Card */
+.state-card {
+  grid-column: span 2;
+}
+
+.connection-badge {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  margin-left: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.connection-badge.online {
+  background: rgba(72, 187, 120, 0.2);
+  color: #48BB78;
+  border: 1px solid rgba(72, 187, 120, 0.3);
+}
+
+.connection-badge.offline {
+  background: rgba(239, 68, 68, 0.2);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.game-state-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.state-item {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid rgba(183, 148, 246, 0.1);
+}
+
+.state-item.full-width {
+  grid-column: span 2;
+}
+
+.state-label {
+  display: block;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.state-value {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.state-value.gold {
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.state-offline {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.state-offline p {
+  margin-bottom: 1rem;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.9rem;
+}
+
+.state-offline code {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.85rem;
+  color: #B794F6;
+  border: 1px solid rgba(183, 148, 246, 0.2);
+}
+
+@media (max-width: 768px) {
+  .game-state-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .state-card {
+    grid-column: 1;
   }
 }

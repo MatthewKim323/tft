@@ -4,10 +4,25 @@
   min-height: 100vh;
   padding: 1.5rem;
   padding-top: 6rem;
+  padding-bottom: 3rem; /* Add bottom padding for comfortable scrolling */
   opacity: 0;
   animation: pageSlideIn 0.5s ease-out forwards;
   background: transparent;
   overflow-x: hidden;
+  overflow-y: visible; /* Allow vertical overflow */
+}
+
+/* Add dim overlay behind logs content */
+.logs-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .logs-page.visible {
@@ -132,6 +147,50 @@
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
+}
+
+/* API Connection Status */
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 20px;
+  margin-left: 1rem;
+}
+
+.api-status.connected {
+  background: rgba(72, 187, 120, 0.1);
+  border-color: rgba(72, 187, 120, 0.2);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EF4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.api-status.connected .status-dot {
+  background: #48BB78;
+  box-shadow: 0 0 8px rgba(72, 187, 120, 0.5);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.status-text {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* Layout */

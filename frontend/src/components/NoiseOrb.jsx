@@ -45,8 +45,8 @@ export default function NoiseOrb({ size = 280 }) {
         this.material = new THREE.PointsMaterial({
           map: this.dot(),
           blending: THREE.NormalBlending,
-          color: 0xB794F6, // Purple color
-          opacity: 0.8,
+          color: 0xFFFFFF, // White color for bright highlights
+          opacity: 0.9,
           transparent: true,
           depthTest: false
         });
@@ -62,11 +62,13 @@ export default function NoiseOrb({ size = 280 }) {
         const ctx = canvas.getContext("2d");
         if (!ctx) return new THREE.CanvasTexture(canvas);
 
-        // Purple gradient for orb particles
+        // Purple gradient with white center for orb particles
         const gradient = ctx.createRadialGradient(sizeH, sizeH, 0, sizeH, sizeH, sizeH);
-        gradient.addColorStop(0, '#B794F6');
-        gradient.addColorStop(0.5, '#9F7AEA');
-        gradient.addColorStop(1, '#805AD5');
+        gradient.addColorStop(0, '#FFFFFF');    // Bright white center
+        gradient.addColorStop(0.3, '#E9D5FF');  // Light purple
+        gradient.addColorStop(0.6, '#B794F6');  // Medium purple
+        gradient.addColorStop(0.8, '#9F7AEA');  // Darker purple
+        gradient.addColorStop(1, '#805AD5');    // Deep purple edge
 
         const circle = new Path2D();
         circle.arc(sizeH, sizeH, sizeH, 0, 2 * Math.PI);
