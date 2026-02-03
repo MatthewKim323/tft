@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import PixelBlast from '../components/PixelBlast';
+import { useGameStateWS, checkAPIHealth } from '../hooks/useGameState';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const [selectedMetric, setSelectedMetric] = useState('winrate');
   const [isVisible, setIsVisible] = useState(false);
+  const [apiOnline, setApiOnline] = useState(false);
   const [liveStats, setLiveStats] = useState({
     winRate: 67.3,
     avgPlacement: 3.2,
@@ -12,24 +14,46 @@ export default function Dashboard() {
     accuracy: 84.7
   });
   const canvasRef = useRef(null);
+  
+  // Connect to game state API
+  const { state: gameState, isConnected } = useGameStateWS(5, 'fast');
 
   useEffect(() => {
     setIsVisible(true);
 
-    // Simulate live data updates
+    // Check if API is online
+    checkAPIHealth().then(result => {
+      setApiOnline(result.online);
+    });
+
+    // Simulate live data updates (when API not connected)
     const interval = setInterval(() => {
-      setLiveStats(prev => ({
-        winRate: Math.min(100, Math.max(0, prev.winRate + (Math.random() - 0.5) * 0.5)),
-        avgPlacement: Math.min(8, Math.max(1, prev.avgPlacement + (Math.random() - 0.5) * 0.1)),
-        games: prev.games + (Math.random() > 0.9 ? 1 : 0),
-        accuracy: Math.min(100, Math.max(0, prev.accuracy + (Math.random() - 0.5) * 0.3))
-      }));
+      if (!isConnected) {
+        setLiveStats(prev => ({
+          winRate: Math.min(100, Math.max(0, prev.winRate + (Math.random() - 0.5) * 0.5)),
+          avgPlacement: Math.min(8, Math.max(1, prev.avgPlacement + (Math.random() - 0.5) * 0.1)),
+          games: prev.games + (Math.random() > 0.9 ? 1 : 0),
+          accuracy: Math.min(100, Math.max(0, prev.accuracy + (Math.random() - 0.5) * 0.3))
+        }));
+      }
     }, 2000);
 
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [isConnected]);
+  
+  // Update stats from game state when connected
+  useEffect(() => {
+    if (gameState && isConnected) {
+      // Use real data from game state
+      setLiveStats(prev => ({
+        ...prev,
+        // Map game state to dashboard stats
+        // These would be calculated from historical data in a real implementation
+      }));
+    }
+  }, [gameState, isConnected]);
 
   // Generate chart data points
   const chartData = Array.from({ length: 40 }, (_, i) => ({
@@ -79,9 +103,9 @@ export default function Dashboard() {
                 <h1 className="dashboard-title page-title-enter">
                   <span className="title-glow">analytics</span> dashboard
                 </h1>
-                <div className="live-indicator">
-                  <span className="live-dot"></span>
-                  <span className="live-text">LIVE</span>
+                <div className={`live-indicator ${isConnected ? 'connected' : ''}`}>
+                  <span className={`live-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+                  <span className="live-text">{isConnected ? 'LIVE' : 'DEMO'}</span>
                 </div>
               </div>
             </div>
@@ -289,6 +313,53 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Live Game State */}
+            <div className="glass-card state-card page-content-enter" style={{ '--delay': '0.3s' }}>
+              <div className="card-glow"></div>
+              <div className="glass-noise"></div>
+              <div className="glass-content">
+                <h2 className="section-title">
+                  Live Game State
+                  <span className={`connection-badge ${isConnected ? 'online' : 'offline'}`}>
+                    {isConnected ? 'Connected' : 'Offline'}
+                  </span>
+                </h2>
+                {isConnected && gameState ? (
+                  <div className="game-state-grid">
+                    <div className="state-item">
+                      <span className="state-label">Stage</span>
+                      <span className="state-value">{gameState.stage?.current || '--'}</span>
+                    </div>
+                    <div className="state-item">
+                      <span className="state-label">Health</span>
+                      <span className="state-value">{gameState.player?.health || '--'}</span>
+                    </div>
+                    <div className="state-item">
+                      <span className="state-label">Gold</span>
+                      <span className="state-value gold">{gameState.player?.gold || '--'}</span>
+                    </div>
+                    <div className="state-item">
+                      <span className="state-label">Level</span>
+                      <span className="state-value">{gameState.player?.level || '--'}</span>
+                    </div>
+                    <div className="state-item full-width">
+                      <span className="state-label">Board Units</span>
+                      <span className="state-value">{gameState.board?.length || 0} units</span>
+                    </div>
+                    <div className="state-item full-width">
+                      <span className="state-label">Bench</span>
+                      <span className="state-value">{gameState.bench?.length || 0} units</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="state-offline">
+                    <p>Start the State Extraction API to see live game data</p>
+                    <code>python run_state_api.py</code>
+                  </div>
+                )}
               </div>
             </div>
           </div>

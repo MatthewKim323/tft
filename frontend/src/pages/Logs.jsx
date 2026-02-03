@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import PixelBlast from '../components/PixelBlast';
+import { useGameStateChanges, useGameStateWS } from '../hooks/useGameState';
 import './Logs.css';
 
 export default function Logs() {
@@ -8,6 +9,10 @@ export default function Logs() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [typingText, setTypingText] = useState('');
   const terminalRef = useRef(null);
+  
+  // Connect to game state API for live changes
+  const { changes: liveChanges, isConnected } = useGameStateChanges();
+  const { state: gameState } = useGameStateWS(2, 'fast');
 
   const logEntries = [
     {
@@ -170,6 +175,10 @@ export default function Logs() {
                 <div className="terminal-badge">
                   <span className="terminal-text">{typingText}</span>
                   <span className="cursor-blink">|</span>
+                </div>
+                <div className={`api-status ${isConnected ? 'connected' : ''}`}>
+                  <span className="status-dot"></span>
+                  <span className="status-text">{isConnected ? 'API Connected' : 'API Offline'}</span>
                 </div>
               </div>
             </div>
