@@ -174,11 +174,120 @@ def export_model(model_path: str = "models/tft_yolo.pt", format: str = "onnx"):
     return exported_path
 
 
+def prepare_dataset(source_dir: str = "training/screenshots", output_dir: str = "training/dataset"):
+    """
+    Prepare dataset structure from captured screenshots
+    
+    Creates the proper YOLO directory structure:
+        dataset/
+            images/train/
+            images/val/
+            labels/train/
+            labels/val/
+    """
+    import shutil
+    import random
+    
+    source = Path(source_dir)
+    output = Path(output_dir)
+    
+    # Create directory structure
+    for split in ["train", "val"]:
+        (output / "images" / split).mkdir(parents=True, exist_ok=True)
+        (output / "labels" / split).mkdir(parents=True, exist_ok=True)
+    
+    # Find all board and bench images (the ones we need to annotate)
+    board_imgs = list(source.glob("board/*.png"))
+    bench_imgs = list(source.glob("bench/*.png"))
+    
+    all_imgs = board_imgs + bench_imgs
+    
+    if not all_imgs:
+        print(f"No images found in {source_dir}/board or {source_dir}/bench")
+        print("\nCapture screenshots first:")
+        print("  python training/capture_training_data.py")
+        return
+    
+    # Shuffle and split 80/20
+    random.shuffle(all_imgs)
+    split_idx = int(len(all_imgs) * 0.8)
+    
+    train_imgs = all_imgs[:split_idx]
+    val_imgs = all_imgs[split_idx:]
+    
+    # Copy images
+    for img_path in train_imgs:
+        shutil.copy(img_path, output / "images" / "train" / img_path.name)
+    
+    for img_path in val_imgs:
+        shutil.copy(img_path, output / "images" / "val" / img_path.name)
+    
+    print(f"\n✅ Dataset prepared in {output_dir}")
+    print(f"   Training images: {len(train_imgs)}")
+    print(f"   Validation images: {len(val_imgs)}")
+    print("\n" + "=" * 50)
+    print("NEXT STEPS - Annotate your images:")
+    print("=" * 50)
+    print("\n1. Install labelImg:")
+    print("   pip install labelImg")
+    print("\n2. Run labelImg:")
+    print(f"   labelImg {output_dir}/images/train")
+    print("\n3. Settings in labelImg:")
+    print("   - Change save format to YOLO")
+    print("   - Save labels to: dataset/labels/train/")
+    print("\n4. Draw bounding boxes around champions")
+    print("   - Label format: TFTUnit_ChampionName (e.g., TFTUnit_Veigar)")
+    print("\n5. Repeat for validation set:")
+    print(f"   labelImg {output_dir}/images/val")
+    print("\n6. After annotation, train:")
+    print("   python training/train_yolo.py --action train")
+    print("=" * 50)
+
+
+def get_tft_classes() -> list:
+    """Get list of TFT Set 13 champions for annotation"""
+    classes = [
+        # Set 13 Champions (example - update with current set)
+        "TFTUnit_Ambessa", "TFTUnit_Caitlyn", "TFTUnit_Camille", "TFTUnit_Corki",
+        "TFTUnit_Darius", "TFTUnit_Draven", "TFTUnit_Ekko", "TFTUnit_Elise",
+        "TFTUnit_Ezreal", "TFTUnit_Gangplank", "TFTUnit_Garen", "TFTUnit_Heimerdinger",
+        "TFTUnit_Illaoi", "TFTUnit_Irelia", "TFTUnit_Jayce", "TFTUnit_Jinx",
+        "TFTUnit_KogMaw", "TFTUnit_Leona", "TFTUnit_Lulu", "TFTUnit_Maddie",
+        "TFTUnit_MissFortune", "TFTUnit_Morgana", "TFTUnit_Nami", "TFTUnit_Nocturne",
+        "TFTUnit_Nunu", "TFTUnit_Powder", "TFTUnit_Renata", "TFTUnit_Renni",
+        "TFTUnit_Scar", "TFTUnit_Sevika", "TFTUnit_Silco", "TFTUnit_Singed",
+        "TFTUnit_Smeech", "TFTUnit_Steb", "TFTUnit_Swain", "TFTUnit_Tristana",
+        "TFTUnit_Trundle", "TFTUnit_TwistedFate", "TFTUnit_Urgot", "TFTUnit_Vander",
+        "TFTUnit_Veigar", "TFTUnit_Vi", "TFTUnit_Viktor", "TFTUnit_Violet",
+        "TFTUnit_Vladimir", "TFTUnit_Warwick", "TFTUnit_Zeri", "TFTUnit_Ziggs",
+        "TFTUnit_Zoe", "TFTUnit_Zyra",
+        # Star indicators
+        "Star_1", "Star_2", "Star_3",
+    ]
+    return classes
+
+
+def create_classes_file(output_dir: str = "training/dataset"):
+    """Create classes.txt for labelImg"""
+    classes = get_tft_classes()
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    
+    classes_file = output / "classes.txt"
+    with open(classes_file, 'w') as f:
+        for cls in classes:
+            f.write(f"{cls}\n")
+    
+    print(f"✅ Created {classes_file}")
+    print(f"   {len(classes)} classes")
+    return classes_file
+
+
 def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Train YOLO model for TFT")
-    parser.add_argument("--action", choices=["setup", "train", "validate", "export"],
+    parser.add_argument("--action", choices=["setup", "prepare", "train", "validate", "export"],
                        default="setup", help="Action to perform")
     parser.add_argument("--data-dir", default="training/dataset",
                        help="Dataset directory")
@@ -192,13 +301,23 @@ def main():
     args = parser.parse_args()
     
     if args.action == "setup":
-        # Create dataset configuration
+        # Create dataset configuration and classes file
+        create_classes_file(args.data_dir)
         create_dataset_yaml(args.data_dir)
-        print("\nNext steps:")
-        print("1. Capture training screenshots: python training/capture_training_data.py")
-        print("2. Annotate images using labelImg or Roboflow")
-        print("3. Organize into training/dataset/images/{train,val} and labels/{train,val}")
-        print("4. Run training: python training/train_yolo.py --action train")
+        print("\n" + "=" * 50)
+        print("YOLO TRAINING WORKFLOW")
+        print("=" * 50)
+        print("\nStep 1: Capture screenshots during a TFT game")
+        print("  python training/capture_training_data.py")
+        print("\nStep 2: Prepare dataset structure")
+        print("  python training/train_yolo.py --action prepare")
+        print("\nStep 3: Annotate with labelImg (see instructions above)")
+        print("\nStep 4: Train the model")
+        print("  python training/train_yolo.py --action train")
+        print("=" * 50)
+    
+    elif args.action == "prepare":
+        prepare_dataset(output_dir=args.data_dir)
     
     elif args.action == "train":
         train_model(

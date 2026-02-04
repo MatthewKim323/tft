@@ -58,14 +58,16 @@ class TrainingDataCapture:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Subdirectories for different regions
+        # Subdirectories for the 7 ROIs
         self.dirs = {
             "full": self.output_dir / "full",
-            "board": self.output_dir / "board",
-            "bench": self.output_dir / "bench",
-            "shop": self.output_dir / "shop",
-            "items": self.output_dir / "items",
-            "players": self.output_dir / "players",
+            "items": self.output_dir / "items",       # 80x1040
+            "traits": self.output_dir / "traits",     # 260x1040
+            "board": self.output_dir / "board",       # 1760x1040
+            "players": self.output_dir / "players",   # 440x1180
+            "bench": self.output_dir / "bench",       # 1520x220
+            "shop": self.output_dir / "shop",         # 1520x264
+            "top_hud": self.output_dir / "top_hud",   # 1760x120
         }
         for d in self.dirs.values():
             d.mkdir(exist_ok=True)
@@ -84,17 +86,15 @@ class TrainingDataCapture:
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         
-        regions = regions or ["full", "board", "bench", "shop", "items", "players"]
+        # Default: capture all 7 ROIs + full screen
+        regions = regions or ["full", "items", "traits", "board", "players", "bench", "shop", "top_hud"]
         
         saved_files = []
         for region_name in regions:
             if region_name == "full":
                 frame = self.capture.capture_full_screen()
-            elif region_name == "items":
-                frame = self.capture.capture_region("item_inventory")
-            elif region_name == "players":
-                frame = self.capture.capture_region("opponent_portraits")
             else:
+                # All region names now match directly: items, traits, board, players, bench, shop, top_hud
                 frame = self.capture.capture_region(region_name)
             
             if frame:

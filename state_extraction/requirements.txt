@@ -10,3 +10,5 @@ numpy>=1.24.0
 pillow>=10.0.0
 python-multipart>=0.0.6
 pynput>=1.7.0         # Global hotkeys for training capture
+pyautogui>=0.9.54     # Mouse control for bot actions
+requests>=2.31.0      # Data Dragon API client
