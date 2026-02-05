@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-02-05T02:27:01.929793",
+  "stage": {
+    "current": "1-1",
+    "phase": "planning"
+  },
+  "player": {
+    "health": 100,
+    "gold": 0,
+    "level": 1,
+    "xp": {
+      "current": 0,
+      "required": 4
+    }
+  },
+  "board": [],
+  "bench": [],
+  "shop": [],
+  "items": [
+    "TFT_Item_UnstableConcoction"
+  ],
+  "augments": []
+}

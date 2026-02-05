@@ -1,0 +1,50 @@
+{
+  "game_window": {
+    "x": 6,
+    "y": 168,
+    "width": 2924,
+    "height": 1649
+  },
+  "items": {
+    "x": 6,
+    "y": 286,
+    "width": 90,
+    "height": 1129
+  },
+  "traits": {
+    "x": 96,
+    "y": 286,
+    "width": 298,
+    "height": 1129
+  },
+  "board": {
+    "x": 418,
+    "y": 286,
+    "width": 2008,
+    "height": 1030
+  },
+  "players": {
+    "x": 2427,
+    "y": 286,
+    "width": 502,
+    "height": 1169
+  },
+  "bench": {
+    "x": 418,
+    "y": 1277,
+    "width": 1736,
+    "height": 217
+  },
+  "shop": {
+    "x": 418,
+    "y": 1495,
+    "width": 1850,
+    "height": 321
+  },
+  "top_hud": {
+    "x": 418,
+    "y": 168,
+    "width": 2008,
+    "height": 118
+  }
+}
