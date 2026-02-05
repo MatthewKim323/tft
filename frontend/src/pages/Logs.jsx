@@ -1,105 +1,106 @@
 import { useState, useEffect, useRef } from 'react';
 import PixelBlast from '../components/PixelBlast';
+import DecisionLog from '../components/DecisionLog';
 import { useGameStateChanges, useGameStateWS } from '../hooks/useGameState';
 import './Logs.css';
+
+const STORAGE_KEY = 'tft_session_logs';
+
+// Convert coach decision to log entry format
+const decisionToLogEntry = (decision, index) => {
+  const actionTypeMap = {
+    'BUY': 'decision',
+    'SELL': 'decision', 
+    'LEVEL': 'economy',
+    'REROLL': 'economy',
+    'HOLD': 'economy',
+    'POSITION': 'decision',
+    'EQUIP': 'item'
+  };
+  
+  return {
+    id: `${decision.timestamp}-${index}`,
+    timestamp: new Date(decision.timestamp).toLocaleString(),
+    type: actionTypeMap[decision.decision?.action] || 'decision',
+    title: `${decision.decision?.action || 'Decision'}: ${decision.decision?.target || ''}`,
+    status: 'recommended',
+    summary: decision.decision?.reasoning || '',
+    details: {
+      analysis: `Economy: ${decision.analysis?.economy_status} | Board: ${decision.analysis?.board_strength} | Position: ${decision.analysis?.position_estimate}`,
+      boardState: {
+        stage: decision.game_state_summary?.stage,
+        health: decision.game_state_summary?.health,
+        gold: decision.game_state_summary?.gold,
+        level: decision.game_state_summary?.level
+      },
+      options: decision.alternative_actions?.map(alt => ({
+        action: alt.action,
+        confidence: 50,
+        reason: alt.reasoning
+      })) || []
+    }
+  };
+};
 
 export default function Logs() {
   const [isVisible, setIsVisible] = useState(false);
   const [expandedLog, setExpandedLog] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [typingText, setTypingText] = useState('');
+  const [logEntries, setLogEntries] = useState([]);
   const terminalRef = useRef(null);
   
   // Connect to game state API for live changes
   const { changes: liveChanges, isConnected } = useGameStateChanges();
   const { state: gameState } = useGameStateWS(2, 'fast');
 
-  const logEntries = [
-    {
-      id: 1,
-      timestamp: '2024-01-27 14:32:05',
-      type: 'decision',
-      title: 'Pivot Decision',
-      status: 'executed',
-      summary: 'Pivoted from Yordle → Shadow Isles at Stage 3-2',
-      details: {
-        trigger: 'Low health threshold (42 HP) detected',
-        analysis: 'Current board strength: 2.4/10, Opponent average: 6.8/10',
-        options: [
-          { action: 'Stay Yordle', confidence: 23, reason: 'Missing 3 key units' },
-          { action: 'Pivot Shadow Isles', confidence: 78, reason: '4 units available, strong synergy' },
-          { action: 'Go Fast 8', confidence: 45, reason: 'Economy sufficient but risky' }
-        ],
-        chosen: 'Pivot Shadow Isles',
-        outcome: 'Win streak initiated, +28 HP over 4 rounds'
+  // Load saved logs from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setLogEntries(parsed);
       }
-    },
-    {
-      id: 2,
-      timestamp: '2024-01-27 14:28:12',
-      type: 'analysis',
-      title: 'Board State Analysis',
-      status: 'complete',
-      summary: 'Detected 3 players contesting Yordle comp',
-      details: {
-        boardState: {
-          units: ['Lulu★★', 'Veigar★', 'Poppy★★', 'Teemo★'],
-          items: ['Rabadon', 'Jeweled Gauntlet', 'Hand of Justice'],
-          gold: 34,
-          level: 6
-        },
-        threats: [
-          { player: 'Player 3', comp: 'Yordle', overlap: '4 units' },
-          { player: 'Player 5', comp: 'Yordle', overlap: '3 units' },
-          { player: 'Player 7', comp: 'Mage Yordle', overlap: '2 units' }
-        ],
-        recommendation: 'Consider pivot or hyper-roll strategy'
-      }
-    },
-    {
-      id: 3,
-      timestamp: '2024-01-27 14:25:33',
-      type: 'item',
-      title: 'Item Recommendation',
-      status: 'pending',
-      summary: 'Suggested BiS items for carry units',
-      details: {
-        carousel: 'Rod available',
-        currentItems: ['BF Sword', 'Chain Vest', 'Tear'],
-        recommendations: [
-          { item: 'Hextech Gunblade', priority: 'HIGH', reason: 'Core AP carry item' },
-          { item: 'Bramble Vest', priority: 'MED', reason: 'Tank frontline' }
-        ]
-      }
-    },
-    {
-      id: 4,
-      timestamp: '2024-01-27 14:22:01',
-      type: 'economy',
-      title: 'Economy Optimization',
-      status: 'executed',
-      summary: 'Level up at 4-1 for power spike',
-      details: {
-        currentGold: 50,
-        interest: 5,
-        action: 'Level to 7, spend 28 gold rolling',
-        expectedValue: 'High chance of hitting key 4-cost units'
-      }
-    },
-    {
-      id: 5,
-      timestamp: '2024-01-27 14:18:45',
-      type: 'decision',
-      title: 'Positioning Update',
-      status: 'executed',
-      summary: 'Repositioned carry to avoid Zephyr',
-      details: {
-        threat: 'Player 2 has Zephyr, targeting corner',
-        action: 'Moved Veigar from corner to second row',
-        counterplay: 'Placed bait unit in corner position'
+    } catch (e) {
+      console.error('Failed to load saved logs:', e);
+    }
+  }, []);
+
+  // Save logs to localStorage when they change
+  useEffect(() => {
+    if (logEntries.length > 0) {
+      try {
+        // Keep only last 100 entries
+        const toSave = logEntries.slice(0, 100);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      } catch (e) {
+        console.error('Failed to save logs:', e);
       }
     }
-  ];
+  }, [logEntries]);
+
+  // Function to add new decision to history
+  const addDecisionToHistory = (decision) => {
+    if (!decision || !decision.decision) return;
+    
+    const logEntry = decisionToLogEntry(decision, Date.now());
+    setLogEntries(prev => {
+      // Avoid duplicates (same timestamp + action)
+      const isDuplicate = prev.some(entry => 
+        entry.id === logEntry.id || 
+        (entry.timestamp === logEntry.timestamp && entry.title === logEntry.title)
+      );
+      if (isDuplicate) return prev;
+      return [logEntry, ...prev].slice(0, 100);
+    });
+  };
+
+  // Clear all logs
+  const clearLogs = () => {
+    setLogEntries([]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   useEffect(() => {
     setIsVisible(true);
@@ -185,46 +186,58 @@ export default function Logs() {
           </header>
 
           <div className="logs-layout">
-            {/* Filter sidebar */}
-            <aside className="filter-sidebar glass-card page-content-enter">
+            {/* Coach - Live Recommendations */}
+            <aside className="coach-sidebar glass-card page-content-enter">
               <div className="card-glow"></div>
               <div className="glass-noise"></div>
-              <div className="sidebar-content">
-                <h3 className="sidebar-title">Filters</h3>
-                <div className="filter-list">
-                  {[
-                    { id: 'all', label: 'All Logs', count: logEntries.length },
-                    { id: 'decision', label: 'Decisions', count: logEntries.filter(l => l.type === 'decision').length },
-                    { id: 'analysis', label: 'Analysis', count: logEntries.filter(l => l.type === 'analysis').length },
-                    { id: 'item', label: 'Items', count: logEntries.filter(l => l.type === 'item').length },
-                    { id: 'economy', label: 'Economy', count: logEntries.filter(l => l.type === 'economy').length }
-                  ].map(filter => (
-                    <button
-                      key={filter.id}
-                      className={`filter-btn ${activeFilter === filter.id ? 'active' : ''}`}
-                      onClick={() => setActiveFilter(filter.id)}
-                    >
-                      <span className="filter-label">{filter.label}</span>
-                      <span className="filter-count">{filter.count}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="sidebar-stats">
-                  <div className="stat-item">
-                    <span className="stat-value">847</span>
-                    <span className="stat-label">Total Decisions</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-value">94.2%</span>
-                    <span className="stat-label">Success Rate</span>
-                  </div>
-                </div>
+              <div className="sidebar-content coach-sidebar-content">
+                <DecisionLog maxDecisions={30} onNewDecision={addDecisionToHistory} />
               </div>
             </aside>
 
-            {/* Log entries */}
+            {/* Historical Log entries */}
             <main className="logs-main">
+              <div className="logs-section-header">
+                <div className="section-header-left">
+                  <h2 className="section-title">session history</h2>
+                  <span className="log-count">{logEntries.length} entries</span>
+                </div>
+                <div className="section-header-right">
+                  {logEntries.length > 0 && (
+                    <button className="clear-history-btn" onClick={clearLogs}>
+                      clear all
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="logs-filter-row">
+                <div className="filter-pills">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'decision', label: 'Decisions' },
+                    { id: 'analysis', label: 'Analysis' },
+                    { id: 'economy', label: 'Economy' }
+                  ].map(filter => (
+                    <button
+                      key={filter.id}
+                      className={`filter-pill ${activeFilter === filter.id ? 'active' : ''}`}
+                      onClick={() => setActiveFilter(filter.id)}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {logEntries.length === 0 ? (
+                <div className="logs-empty">
+                  <div className="empty-state">
+                    <div className="empty-icon"></div>
+                    <p>no decisions yet</p>
+                    <p className="hint">decisions will appear here as the coach analyzes your game</p>
+                  </div>
+                </div>
+              ) : (
               <div className="logs-list">
                 {filteredLogs.map((log, index) => (
                   <div 
@@ -347,6 +360,7 @@ export default function Logs() {
                   </div>
                 ))}
               </div>
+              )}
             </main>
           </div>
         </div>

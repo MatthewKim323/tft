@@ -1,0 +1,370 @@
+/* Decision Card - Single AI Coach recommendation */
+
+.decision-card {
+  background: rgba(10, 10, 18, 0.6);
+  border: 1px solid rgba(183, 148, 246, 0.12);
+  border-left: 2px solid var(--priority-color, rgba(112, 161, 255, 0.6));
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.decision-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(183, 148, 246, 0.02) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.decision-card:hover {
+  border-color: rgba(183, 148, 246, 0.25);
+  background: rgba(15, 15, 25, 0.7);
+  transform: translateX(3px);
+}
+
+.decision-card.latest {
+  border-color: rgba(183, 148, 246, 0.3);
+  background: rgba(15, 15, 28, 0.75);
+}
+
+.decision-card.latest::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 20px rgba(183, 148, 246, 0.08);
+  pointer-events: none;
+}
+
+.decision-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.decision-time {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.02em;
+}
+
+.decision-priority {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  color: #0a0a12;
+  text-transform: lowercase;
+  letter-spacing: 0.05em;
+}
+
+.decision-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+/* Action indicator - replaces emoji */
+.decision-indicator {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(183, 148, 246, 0.1);
+  border: 1px solid rgba(183, 148, 246, 0.2);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.decision-indicator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(183, 148, 246, 0.5);
+}
+
+.decision-indicator.action-buy { 
+  background: rgba(72, 187, 120, 0.12); 
+  border-color: rgba(72, 187, 120, 0.25);
+}
+.decision-indicator.action-buy::after { background: rgba(72, 187, 120, 0.6); }
+
+.decision-indicator.action-sell { 
+  background: rgba(246, 173, 85, 0.12); 
+  border-color: rgba(246, 173, 85, 0.25);
+}
+.decision-indicator.action-sell::after { background: rgba(246, 173, 85, 0.6); }
+
+.decision-indicator.action-level { 
+  background: rgba(99, 179, 237, 0.12); 
+  border-color: rgba(99, 179, 237, 0.25);
+}
+.decision-indicator.action-level::after { background: rgba(99, 179, 237, 0.6); }
+
+.decision-indicator.action-reroll { 
+  background: rgba(183, 148, 246, 0.12); 
+  border-color: rgba(183, 148, 246, 0.25);
+}
+.decision-indicator.action-reroll::after { background: rgba(183, 148, 246, 0.6); }
+
+.decision-indicator.action-hold { 
+  background: rgba(160, 174, 192, 0.12); 
+  border-color: rgba(160, 174, 192, 0.25);
+}
+.decision-indicator.action-hold::after { background: rgba(160, 174, 192, 0.5); }
+
+.decision-action {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.action-type {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: lowercase;
+  letter-spacing: 0.08em;
+}
+
+.action-target {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.decision-reasoning {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Expanded details */
+.decision-details {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(183, 148, 246, 0.1);
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section h4 {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.65rem;
+  text-transform: lowercase;
+  letter-spacing: 0.1em;
+  color: rgba(183, 148, 246, 0.6);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.state-item {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.state-item .label {
+  display: block;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: lowercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.state-item .value {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.state-item .value.gold {
+  color: #FFD700;
+}
+
+.analysis-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.tag.economy-healthy { 
+  background: rgba(72, 187, 120, 0.1); 
+  color: #68D391; 
+  border-color: rgba(72, 187, 120, 0.2);
+}
+.tag.economy-stable { 
+  background: rgba(99, 179, 237, 0.1); 
+  color: #63B3ED; 
+  border-color: rgba(99, 179, 237, 0.2);
+}
+.tag.economy-critical { 
+  background: rgba(246, 173, 85, 0.1); 
+  color: #F6AD55; 
+  border-color: rgba(246, 173, 85, 0.2);
+}
+.tag.economy-desperate { 
+  background: rgba(239, 68, 68, 0.1); 
+  color: #FC8181; 
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.tag.board-weak { 
+  background: rgba(239, 68, 68, 0.1); 
+  color: #FC8181; 
+  border-color: rgba(239, 68, 68, 0.2);
+}
+.tag.board-medium { 
+  background: rgba(246, 173, 85, 0.1); 
+  color: #F6AD55; 
+  border-color: rgba(246, 173, 85, 0.2);
+}
+.tag.board-strong { 
+  background: rgba(72, 187, 120, 0.1); 
+  color: #68D391; 
+  border-color: rgba(72, 187, 120, 0.2);
+}
+.tag.board-dominant { 
+  background: rgba(183, 148, 246, 0.1); 
+  color: #B794F6; 
+  border-color: rgba(183, 148, 246, 0.2);
+}
+
+.tag.position {
+  background: rgba(160, 174, 192, 0.1);
+  color: rgba(160, 174, 192, 0.9);
+  border-color: rgba(160, 174, 192, 0.2);
+}
+
+.alternatives-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alternative-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.alt-action {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 500;
+  font-size: 0.7rem;
+  color: rgba(183, 148, 246, 0.7);
+  min-width: 55px;
+  letter-spacing: 0.02em;
+}
+
+.alt-reason {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.traits-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trait-tag {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  background: rgba(183, 148, 246, 0.08);
+  border: 1px solid rgba(183, 148, 246, 0.15);
+  border-radius: 4px;
+  color: rgba(183, 148, 246, 0.8);
+}
+
+.expand-hint {
+  text-align: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.2);
+  margin-top: 10px;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  transition: color 0.2s;
+}
+
+.decision-card:hover .expand-hint {
+  color: rgba(255, 255, 255, 0.35);
+}

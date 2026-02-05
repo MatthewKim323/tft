@@ -1,134 +1,139 @@
-# TFT Bot - Data Extraction
+# TFT Bot
 
-This repository contains extracted TFT (Teamfight Tactics) game data from CommunityDragon for the **current set only** (Set 16).
+AI-powered Teamfight Tactics coach that analyzes your game in real-time and provides recommendations.
+
+## Features
+
+- **Real-time game state extraction** via screen capture
+- **Hybrid detection system**: OCR + Template Matching + YOLO
+- **AI Coach** that recommends buys, levels, and economy decisions
+- **React dashboard** for live game monitoring
+- **WebSocket streaming** for instant updates
+
+## Quick Start
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Start the API server
+python run_state_api.py
+
+# 3. Open dashboard (in another terminal)
+cd frontend && npm run dev
+
+# 4. Open TFT and play!
+```
+
+## Project Structure
+
+```
+tft_bot/
+├── run_state_api.py      # Main API server entry point
+├── run_bot.py            # Bot executor (for automated play)
+├── requirements.txt      # Python dependencies
+├── tft_data.json         # Game data (champions, items, traits)
+│
+├── bot/                  # AI Coach logic
+│   ├── coach.py          # Main decision engine
+│   ├── decisions.py      # Decision types and formatting
+│   ├── actions.py        # Mouse controller for automation
+│   └── analyzers/        # Game state analyzers
+│       ├── economy.py    # Gold, interest, level timing
+│       ├── board.py      # Board strength, upgrades
+│       └── shop.py       # Shop value, buy recommendations
+│
+├── state_extraction/     # Screen capture & detection
+│   ├── api.py            # FastAPI server + WebSocket
+│   ├── state_builder.py  # Hybrid extraction pipeline
+│   ├── capture.py        # Screen capture
+│   ├── ocr.py            # Text extraction (gold, HP, stage)
+│   ├── detector.py       # YOLO detection (champions)
+│   ├── template_matcher.py # Icon matching (shop, items)
+│   └── config.py         # ROI coordinates
+│
+├── training/             # YOLO training tools
+│   ├── calibrate_roi.py  # Visual ROI calibration
+│   ├── capture_training_data.py  # Screenshot capture
+│   └── train_yolo.py     # YOLO training script
+│
+├── tools/                # Utility scripts
+│   ├── extract_data.py   # Download TFT data
+│   ├── filter_set.py     # Filter to current set
+│   ├── analyze_data.py   # Analyze data structure
+│   └── test_capture.py   # Test screen capture
+│
+└── frontend/             # React dashboard
+    └── src/
+        ├── pages/        # Dashboard, Logs, Home
+        ├── components/   # UI components
+        └── hooks/        # WebSocket hooks
+```
+
+## How It Works
+
+### Hybrid Extraction
+
+The bot uses multiple detection methods for reliability:
+
+| Method | What it extracts | Training needed? |
+|--------|-----------------|------------------|
+| **OCR** (EasyOCR) | Gold, HP, Level, Stage | No |
+| **Template Matching** | Shop champions, Items | No (uses Riot icons) |
+| **Star Detection** | 1★/2★/3★ levels | No (color analysis) |
+| **YOLO** | Board/bench champions | Yes |
+
+### API Endpoints
+
+```
+GET  /status        - Check extraction capabilities
+GET  /state         - Current game state
+GET  /decision      - Coach recommendation
+WS   /ws/state      - Stream game state
+WS   /ws/decisions  - Stream coach decisions
+```
+
+## Configuration
+
+### Screen Calibration
+
+Different monitors require calibration:
+
+```bash
+python training/calibrate_roi.py
+```
+
+Click corners of TFT window → Preview regions → Press 's' to save.
+
+### Update Game Data
+
+When a new TFT set releases:
+
+```bash
+python tools/extract_data.py
+python tools/filter_set.py
+```
+
+## YOLO Training
+
+For board/bench champion detection:
+
+```bash
+# 1. Capture screenshots while playing
+python training/capture_training_data.py
+# Press \ to capture regions
+
+# 2. Annotate with LabelImg or Roboflow
+
+# 3. Train
+python training/train_yolo.py --action setup
+python training/train_yolo.py --action train
+```
 
 ## Data Source
 
-All data is extracted from [CommunityDragon](https://communitydragon.org/documentation), which provides scraped data from Riot Games' TFT client.
+Game data from [CommunityDragon](https://communitydragon.org) - current set only.
 
-**Data URL**: `https://raw.communitydragon.org/latest/cdragon/tft/en_us.json`
+## License
 
-## Extracted Data
-
-The `tft_data.json` file contains **only Set 16 (current set)** data including:
-
-### 📦 Current Set: Set 16
-- **Champions**: 116 champions with complete stats, abilities, costs, and traits
-- **Items**: 852 items (including all items and augments)
-- **Traits**: 53 traits/synergies with descriptions and scaling
-- **Augments**: 277 augments available in Set 16
-
-### Data Structure
-
-```json
-{
-  "set": {
-    "number": 16,
-    "name": "Set16",
-    "mutator": "TFTSet16"
-  },
-  "champions": [
-    {
-      "apiName": "...",
-      "name": "...",
-      "cost": 1,
-      "traits": [...],
-      "ability": {...},
-      "stats": {...},
-      ...
-    },
-    ...
-  ],
-  "items": [
-    {
-      "apiName": "...",
-      "name": "...",
-      "desc": "...",
-      "icon": "...",
-      "effects": {...},
-      ...
-    },
-    ...
-  ],
-  "traits": [
-    {
-      "apiName": "...",
-      "name": "...",
-      "desc": "...",
-      "effects": {...},
-      ...
-    },
-    ...
-  ],
-  "augments": [
-    {
-      "apiName": "...",
-      "name": "...",
-      "desc": "...",
-      ...
-    },
-    ...
-  ]
-}
-```
-
-## Files
-
-- `tft_data.json` - Current set (Set 16) TFT game data (~980 KB)
-- `extract_tft_data.py` - Script to download data from CommunityDragon
-- `filter_current_set.py` - Script to filter data to only current set
-- `analyze_tft_data.py` - Script to analyze and summarize the data
-
-## Usage
-
-### Download Latest Data
-
-```bash
-python3 extract_tft_data.py
-```
-
-### Analyze Data
-
-```bash
-python3 analyze_tft_data.py
-```
-
-### Load Data in Python
-
-```python
-import json
-
-with open('tft_data.json', 'r', encoding='utf-8') as f:
-    tft_data = json.load(f)
-
-# Access set info
-set_info = tft_data['set']
-print(f"Current set: {set_info['name']} (Set {set_info['number']})")
-
-# Access champions
-champions = tft_data['champions']
-for champ in champions:
-    print(f"{champ['name']} - Cost: {champ['cost']}, Traits: {champ['traits']}")
-
-# Access items
-items = tft_data['items']
-
-# Access traits
-traits = tft_data['traits']
-
-# Access augments
-augments = tft_data['augments']
-```
-
-## Legal Notice
-
-This data is extracted from CommunityDragon, which operates under Riot Games' "Legal Jibber Jabber" policy. Riot Games does not endorse or sponsor this project. The usage of this data does not pose a risk to your API key.
-
-**CommunityDragon does not endorse, condone or support the usage of Riot's assets provided through CommunityDragon's services with the purpose of ill intent, such as scripting or hacking.**
-
-## Notes
-
-- Data is updated regularly by CommunityDragon (check the last modified date)
-- The file size is ~980 KB (uncompressed JSON)
-- **Only current set (Set 16) data is included** - historical sets are filtered out
-- To update to a new set, run `extract_tft_data.py` then `filter_current_set.py`
+Educational/personal use only. Not affiliated with Riot Games.

@@ -2,9 +2,12 @@
 """
 TFT Bot - Main Entry Point
 
-Combines state extraction with decision engine to play TFT automatically.
+Combines state extraction with AI coach to play TFT.
 
 Usage:
+    # Test components
+    python run_bot.py --test
+    
     # Dry run (no mouse control, just analysis)
     python run_bot.py --dry-run
     
@@ -24,12 +27,12 @@ from pathlib import Path
 def run_analysis_mode():
     """Run single game state analysis"""
     print("\n" + "=" * 60)
-    print("🎮 TFT Bot - Analysis Mode")
+    print("TFT Bot - Analysis Mode")
     print("=" * 60)
     
     try:
         from state_extraction.state_builder import StateBuilder
-        from bot.decision_engine import DecisionEngine
+        from bot.coach import TFTCoach
     except ImportError as e:
         print(f"Import error: {e}")
         print("Make sure all dependencies are installed.")
@@ -38,7 +41,7 @@ def run_analysis_mode():
     # Initialize components
     print("\nInitializing...")
     state_builder = StateBuilder()
-    engine = DecisionEngine()
+    coach = TFTCoach()
     
     # Capture and analyze
     print("Capturing game state...")
@@ -50,17 +53,22 @@ def run_analysis_mode():
     
     # Show state
     print("\n📊 Game State:")
-    print(json.dumps(game_state, indent=2, default=str)[:2000] + "...")
+    state_dict = game_state.to_dict()
+    print(f"  Stage: {state_dict.get('stage', {}).get('current', '?')}")
+    print(f"  HP: {state_dict.get('player', {}).get('health', '?')}")
+    print(f"  Gold: {state_dict.get('player', {}).get('gold', '?')}")
+    print(f"  Level: {state_dict.get('player', {}).get('level', '?')}")
+    print(f"  Board: {len(state_dict.get('board', []))} units")
+    print(f"  Shop: {len(state_dict.get('shop', []))} champions")
     
-    # Get analysis
-    summary = engine.get_state_summary(game_state)
-    print("\n📈 Analysis:")
-    for key, value in summary.items():
-        print(f"  {key}: {value}")
+    # Get coach recommendation
+    decision = coach.analyze(state_dict)
     
-    # Get recommended actions
-    actions = engine.decide(game_state)
-    print("\n" + engine.get_action_summary(actions))
+    print("\n🎯 Coach Recommendation:")
+    print(f"  Action: {decision.decision.action.value}")
+    print(f"  Target: {decision.decision.target}")
+    print(f"  Priority: {decision.decision.priority.value}")
+    print(f"  Reason: {decision.decision.reasoning}")
     
     state_builder.close()
     print("\n" + "=" * 60)
@@ -69,19 +77,19 @@ def run_analysis_mode():
 def run_dry_mode():
     """Run continuous analysis without mouse control"""
     print("\n" + "=" * 60)
-    print("🎮 TFT Bot - Dry Run Mode (Analysis Only)")
+    print("TFT Bot - Dry Run Mode (Analysis Only)")
     print("=" * 60)
     print("Press Ctrl+C to stop\n")
     
     try:
         from state_extraction.state_builder import StateBuilder
-        from bot.decision_engine import DecisionEngine
+        from bot.coach import TFTCoach
     except ImportError as e:
         print(f"Import error: {e}")
         return
     
     state_builder = StateBuilder()
-    engine = DecisionEngine()
+    coach = TFTCoach()
     
     iteration = 0
     try:
@@ -92,24 +100,24 @@ def run_dry_mode():
             game_state = state_builder.build_state_fast()
             
             if game_state:
-                summary = engine.get_state_summary(game_state)
+                state_dict = game_state.to_dict()
+                player = state_dict.get('player', {})
+                stage = state_dict.get('stage', {}).get('current', '?')
                 
                 # One-line status
-                player = game_state.get('player', {})
-                stage = game_state.get('stage', {}).get('current', '?')
                 print(f"Stage: {stage} | HP: {player.get('health', '?')} | Gold: {player.get('gold', '?')} | Level: {player.get('level', '?')}")
-                print(f"Board: {summary['board_tier']} ({summary['board_score']}) | Strategy: {summary['strategy']}")
                 
-                actions = engine.decide(game_state)
-                if actions:
-                    print(f"Top Action: {actions[0].reason}")
+                # Get recommendation
+                decision = coach.analyze(state_dict)
+                print(f"Coach: [{decision.decision.priority.value.upper()}] {decision.decision.action.value} - {decision.decision.target}")
+                print(f"       {decision.decision.reasoning}")
             else:
                 print("Could not get game state")
             
             time.sleep(2)
             
     except KeyboardInterrupt:
-        print("\n\n🛑 Stopped")
+        print("\n\nStopped")
     finally:
         state_builder.close()
 
@@ -117,7 +125,7 @@ def run_dry_mode():
 def run_live_mode(calibration_path: str = None):
     """Run bot with actual mouse control"""
     print("\n" + "=" * 60)
-    print("🎮 TFT Bot - LIVE Mode")
+    print("TFT Bot - LIVE Mode")
     print("⚠️  Bot will control your mouse!")
     print("⚠️  Move mouse to corner to abort (failsafe)")
     print("=" * 60)
@@ -137,14 +145,15 @@ def run_live_mode(calibration_path: str = None):
     state_builder = StateBuilder()
     
     def get_state():
-        return state_builder.build_state_fast()
+        state = state_builder.build_state_fast()
+        return state.to_dict() if state else {}
     
     runner = BotRunner(
         calibration_path=calibration_path,
         dry_run=False
     )
     
-    print("\n🚀 Starting in 3 seconds...")
+    print("\nStarting in 3 seconds...")
     time.sleep(3)
     
     try:
@@ -156,11 +165,12 @@ def run_live_mode(calibration_path: str = None):
 def test_components():
     """Test all bot components"""
     print("\n" + "=" * 60)
-    print("🧪 TFT Bot - Component Test")
+    print("TFT Bot - Component Test")
     print("=" * 60)
     
     # Test imports
     print("\n1. Testing imports...")
+    
     try:
         from state_extraction.capture import ScreenCapture
         print("   ✓ ScreenCapture")
@@ -168,10 +178,10 @@ def test_components():
         print(f"   ✗ ScreenCapture: {e}")
     
     try:
-        from state_extraction.ocr import OCREngine
-        print("   ✓ OCREngine")
+        from state_extraction.ocr import OCRExtractor
+        print("   ✓ OCRExtractor")
     except ImportError as e:
-        print(f"   ✗ OCREngine: {e}")
+        print(f"   ✗ OCRExtractor: {e}")
     
     try:
         from state_extraction.template_matcher import TemplateMatcher
@@ -186,16 +196,16 @@ def test_components():
         print(f"   ✗ StateBuilder: {e}")
     
     try:
-        from bot.decision_engine import DecisionEngine
-        print("   ✓ DecisionEngine")
+        from bot.coach import TFTCoach
+        print("   ✓ TFTCoach")
     except ImportError as e:
-        print(f"   ✗ DecisionEngine: {e}")
+        print(f"   ✗ TFTCoach: {e}")
     
     try:
-        from bot.evaluator import BoardEvaluator, EconomyEvaluator
-        print("   ✓ Evaluators")
+        from bot.analyzers import EconomyAnalyzer, BoardAnalyzer, ShopAnalyzer
+        print("   ✓ Analyzers")
     except ImportError as e:
-        print(f"   ✗ Evaluators: {e}")
+        print(f"   ✗ Analyzers: {e}")
     
     try:
         from bot.actions import ActionExecutor
@@ -214,36 +224,35 @@ def test_components():
     except Exception as e:
         print(f"   ✗ Capture failed: {e}")
     
-    # Test decision engine with sample data
-    print("\n3. Testing decision engine...")
+    # Test coach with sample data
+    print("\n3. Testing AI coach...")
     try:
-        from bot.decision_engine import DecisionEngine
-        engine = DecisionEngine()
+        from bot.coach import TFTCoach
+        coach = TFTCoach()
         
         sample_state = {
             "player": {"health": 70, "gold": 45, "level": 6},
             "stage": {"current": "3-3"},
             "board": [{"champion": "Veigar", "star": 2, "items": []}],
-            "bench": [],
-            "shop": [{"champion": "Lulu", "cost": 2}],
+            "bench": [{"champion": "Lulu", "star": 1, "items": []}],
+            "shop": [{"slot": 0, "champion": "Lulu", "cost": 2}],
             "traits": [{"name": "Sorcerer", "tier": "gold"}],
             "items": []
         }
         
-        actions = engine.decide(sample_state)
-        print(f"   ✓ Generated {len(actions)} actions")
-        if actions:
-            print(f"   ✓ Top action: {actions[0].reason}")
+        decision = coach.analyze(sample_state)
+        print(f"   ✓ Generated decision: {decision.decision.action.value}")
+        print(f"   ✓ Target: {decision.decision.target}")
     except Exception as e:
-        print(f"   ✗ Decision engine failed: {e}")
+        print(f"   ✗ Coach failed: {e}")
     
     print("\n" + "=" * 60)
-    print("✅ Component test complete!")
+    print("Component test complete!")
     print("=" * 60)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="TFT Bot - Automated TFT Player")
+    parser = argparse.ArgumentParser(description="TFT Bot - AI-Powered TFT Coach")
     
     parser.add_argument('--analyze', action='store_true',
                        help='Run single analysis of current game state')
@@ -269,7 +278,7 @@ def main():
         run_live_mode(calibration)
     else:
         # Default: show help
-        print("\n🎮 TFT Bot")
+        print("\nTFT Bot - AI-Powered TFT Coach")
         print("\nUsage:")
         print("  python run_bot.py --test      # Test all components")
         print("  python run_bot.py --analyze   # Single analysis")
