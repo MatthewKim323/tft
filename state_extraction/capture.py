@@ -145,7 +145,12 @@ class ScreenCapture:
         """Capture a specific named region at native resolution"""
         all_regions = self.regions.get_all_regions()
         if region_name not in all_regions:
-            print(f"Unknown region: {region_name}")
+            # Only warn once per unknown region to avoid spam
+            if not hasattr(self, '_warned_regions'):
+                self._warned_regions = set()
+            if region_name not in self._warned_regions:
+                print(f"⚠ Unknown region: {region_name} (available: {list(all_regions.keys())})")
+                self._warned_regions.add(region_name)
             return None
         return self._capture_region(all_regions[region_name])
     

@@ -11,6 +11,8 @@ How to set up, calibrate, train, and use the TFT Coach system.
 3. [Data Storage](#data-storage)
 4. [Screen Calibration](#screen-calibration)
 5. [Running the Coach](#running-the-coach)
+   - [Manual Mode](#manual-mode-recommended)
+   - [Autonomous Mode](#autonomous-mode)
 6. [Capturing Screenshots](#capturing-screenshots)
 7. [Training the Model](#training-the-model)
 8. [Using the Dashboard](#using-the-dashboard)
@@ -100,9 +102,11 @@ cd /Users/matthewkim/Documents/tft_bot
 # Activate virtual environment
 source venv/bin/activate
 
-# Install dependencies (if not already done)
-pip install -r state_extraction/requirements.txt
+# Install ALL dependencies (required!)
+pip install -r requirements.txt
 ```
+
+**Dependencies include:** opencv-python, easyocr, ultralytics (YOLO), fastapi, mss, pynput, pyautogui, requests
 
 ### The Basic Flow
 
@@ -172,47 +176,141 @@ Saves to `roi_calibration.json`:
 
 ## Running the Coach
 
-### Step 1: Start the API Server
+The bot has **two operation modes**:
+
+| Mode | Flag | When to Use |
+|------|------|-------------|
+| **Manual** | `--manual` | You control when analysis happens (recommended) |
+| **Autonomous** | `--auto` | Continuous real-time analysis |
+
+Both modes use the same calibration (`roi_calibration.json`), same dashboard, and same decision logs.
+
+---
+
+### Manual Mode (Recommended)
+
+Best for learning and when the bot isn't fully trained. Analysis only happens when YOU trigger it.
+
+**Terminal 1: Start API in manual mode**
 
 ```bash
-python run_state_api.py
+source venv/bin/activate
+python run_state_api.py --manual
 ```
 
-You should see:
-
-```
-Starting TFT State Extraction API on http://127.0.0.1:8000
-WebSocket: ws://127.0.0.1:8000/ws/state
-API Docs: http://127.0.0.1:8000/docs
-Initializing State Extraction API...
-AI Coach initialized ✓
-```
-
-The API runs on `localhost:8000` and provides:
-- REST endpoints for game state
-- WebSocket streams for live updates
-- Coach decision endpoint
-
-### Step 2: Start the Frontend
+**Terminal 2: Start the hotkey trigger**
 
 ```bash
-cd frontend
-npm run dev
+python analyze_screenshot.py
 ```
 
-Opens at `http://localhost:5173`
+**Terminal 3: Start the frontend (optional)**
 
-### Step 3: Navigate to Logs
+```bash
+cd frontend && npm run dev
+```
 
-Click **"logs"** in the navigation to see the Coach panel.
+**Workflow:**
+
+1. Play TFT normally
+2. When you want the coach's advice, press `\`
+3. See recommendation in:
+   - Terminal (instant feedback)
+   - Dashboard Logs tab (if frontend running)
+4. Screenshots saved to `screenshots/manual/`
+5. Execute the recommendation manually
+
+**Why use manual mode?**
+
+- Bot isn't "smart enough" yet for full autonomy
+- You stay in control of game decisions
+- Great for learning what the coach thinks
+- Builds up screenshot history for later training
+
+---
+
+### Autonomous Mode
+
+Continuous real-time analysis. The bot constantly watches your screen and streams recommendations.
+
+**Terminal 1: Start API in autonomous mode**
+
+```bash
+source venv/bin/activate
+python run_state_api.py --auto
+```
+
+**Terminal 2: Start the frontend**
+
+```bash
+cd frontend && npm run dev
+```
+
+**Workflow:**
+
+1. Open `http://localhost:5173`
+2. Click **"logs"** in navigation
+3. Play TFT
+4. Watch real-time recommendations stream in
+5. Execute decisions manually (or use `--live` mode with `run_bot.py` for automation)
+
+---
+
+### Mode Comparison
+
+| Feature | Manual (`--manual`) | Autonomous (`--auto`) |
+|---------|---------------------|----------------------|
+| Analysis trigger | Press `\` | Continuous |
+| CPU usage | Low (on-demand) | Higher (constant) |
+| Screenshots saved | Yes (`screenshots/manual/`) | No |
+| Best for | Learning, training data | Full automation |
+| Hotkey script needed | Yes (`analyze_screenshot.py`) | No |
+
+---
+
+### Quick Reference
+
+```bash
+# Manual mode (recommended)
+python run_state_api.py --manual
+python analyze_screenshot.py  # In another terminal
+
+# Autonomous mode
+python run_state_api.py --auto
+```
 
 ---
 
 ## Capturing Screenshots
 
-The system captures screenshots automatically when the API is running, but you can also capture training data manually.
+There are two types of screenshot capture:
 
-### Manual Capture (for Training)
+| Type | Script | Purpose | Output Location |
+|------|--------|---------|-----------------|
+| **Manual Analysis** | `analyze_screenshot.py` | Get coach advice on-demand | `screenshots/manual/` |
+| **Training Data** | `training/capture_training_data.py` | Collect data for YOLO | `training/screenshots/` |
+
+### Manual Analysis Capture
+
+Used with manual mode to get coach recommendations:
+
+```bash
+# Start API in manual mode first
+python run_state_api.py --manual
+
+# Then run the hotkey trigger
+python analyze_screenshot.py
+```
+
+Press `\` to:
+1. Take full screenshot
+2. Analyze with coach
+3. Show recommendation in terminal
+4. Save screenshot to `screenshots/manual/`
+
+---
+
+### Training Data Capture (for YOLO)
 
 ```bash
 python training/capture_training_data.py
@@ -407,7 +505,7 @@ Then recommends:
 # 1. Install dependencies
 cd /Users/matthewkim/Documents/tft_bot
 source venv/bin/activate
-pip install -r state_extraction/requirements.txt
+pip install -r requirements.txt
 
 # 2. Calibrate screen (TFT must be open)
 python training/calibrate_roi.py
@@ -415,14 +513,35 @@ python training/calibrate_roi.py
 
 # 3. Test capture
 python training/capture_training_data.py
-# Press '\' a few times, check screenshots/
+# Press '\' a few times, check training/screenshots/
 ```
 
-### Playing with Coach
+### Playing with Coach (Manual Mode - Recommended)
 
 ```bash
-# Terminal 1: Start API
-python run_state_api.py
+# Terminal 1: Start API in manual mode
+source venv/bin/activate
+python run_state_api.py --manual
+
+# Terminal 2: Start hotkey trigger
+python analyze_screenshot.py
+
+# Terminal 3 (optional): Start frontend
+cd frontend && npm run dev
+```
+
+1. Play TFT normally
+2. Press `\` when you want coach advice
+3. See recommendation in terminal
+4. (Optional) Check dashboard at `http://localhost:5173` → Logs tab
+5. Execute decisions manually
+
+### Playing with Coach (Autonomous Mode)
+
+```bash
+# Terminal 1: Start API in auto mode
+source venv/bin/activate
+python run_state_api.py --auto
 
 # Terminal 2: Start frontend
 cd frontend && npm run dev
@@ -431,7 +550,7 @@ cd frontend && npm run dev
 1. Open `http://localhost:5173`
 2. Click **"logs"** in nav
 3. Play TFT
-4. Watch recommendations appear in real-time
+4. Watch recommendations stream in real-time
 5. Execute decisions manually
 
 ### Training Session
@@ -467,6 +586,7 @@ cp models/tft_yolo/weights/best.pt models/tft_yolo.pt
 | `/state?mode=full` | GET | Full state with YOLO detection |
 | `/decision` | GET | Single coach decision |
 | `/decision/history` | GET | Recent decisions |
+| `/manual_capture_and_analyze` | POST | **Manual mode: capture + analyze** |
 | `/regions` | GET | ROI definitions |
 | `/test/templates` | GET | Test template matching |
 
@@ -581,12 +701,59 @@ python -c "from state_extraction.state_builder import test_state_builder; test_s
 
 | File | Purpose |
 |------|---------|
+| `requirements.txt` | Python dependencies |
 | `roi_calibration.json` | Your screen calibration |
+| `analyze_screenshot.py` | Manual mode hotkey trigger |
+| `run_state_api.py` | API server (--manual or --auto) |
 | `models/tft_yolo.pt` | Trained YOLO model |
 | `tft_data.json` | Champion/trait data |
 | `training/screenshots/` | Captured training images |
+| `screenshots/manual/` | Manual mode captures |
 | `training/dataset/` | Prepared training data |
 | `assets/data_dragon/` | Cached Riot icons |
+
+## Project Structure
+
+```
+tft_bot/
+├── run_state_api.py       # Start API server (--manual or --auto)
+├── run_bot.py             # Start bot (--test, --dry-run, --live)
+├── analyze_screenshot.py  # Manual mode hotkey trigger
+├── requirements.txt       # Python dependencies
+├── roi_calibration.json   # Your screen calibration
+├── tft_data.json          # Game data
+│
+├── bot/                   # AI Coach
+│   ├── coach.py           # Decision engine
+│   ├── decisions.py       # Decision types
+│   ├── actions.py         # Mouse control
+│   └── analyzers/         # economy.py, board.py, shop.py
+│
+├── state_extraction/      # Screen capture & detection
+│   ├── api.py             # FastAPI server
+│   ├── state_builder.py   # Hybrid extraction
+│   ├── capture.py         # Screen capture
+│   ├── ocr.py             # Text extraction
+│   ├── detector.py        # YOLO detection
+│   ├── template_matcher.py # Icon matching
+│   └── config.py          # ROI coordinates
+│
+├── training/              # Training tools
+│   ├── calibrate_roi.py   # Screen calibration
+│   ├── capture_training_data.py
+│   └── train_yolo.py
+│
+├── tools/                 # Utility scripts
+│   ├── extract_data.py    # Download TFT data
+│   ├── filter_set.py      # Filter to current set
+│   ├── analyze_data.py    # Analyze data structure
+│   └── test_capture.py    # Test screen capture
+│
+├── screenshots/           # Saved screenshots
+│   └── manual/            # Manual mode captures
+│
+└── frontend/              # React dashboard
+```
 
 ---
 
@@ -600,15 +767,27 @@ python -c "from state_extraction.state_builder import test_state_builder; test_s
 │  1. CALIBRATE (one-time)                               │
 │     python training/calibrate_roi.py                    │
 │                                                         │
-│  2. START API                                          │
-│     python run_state_api.py                            │
+│  2. PICK A MODE                                        │
 │                                                         │
-│  3. START FRONTEND                                     │
+│     ┌─────────────────┬─────────────────────────────┐  │
+│     │  MANUAL (rec.)  │  AUTONOMOUS                 │  │
+│     ├─────────────────┼─────────────────────────────┤  │
+│     │ run_state_api   │ run_state_api.py --auto     │  │
+│     │   .py --manual  │                             │  │
+│     │ analyze_screen  │ (no hotkey script)          │  │
+│     │   shot.py       │                             │  │
+│     │                 │                             │  │
+│     │ Press \ for     │ Continuous real-time        │  │
+│     │ analysis        │ analysis                    │  │
+│     └─────────────────┴─────────────────────────────┘  │
+│                                                         │
+│  3. START FRONTEND (optional)                          │
 │     cd frontend && npm run dev                         │
 │                                                         │
 │  4. PLAY TFT                                           │
-│     → Coach analyzes game state                        │
-│     → Recommendations appear in Logs tab               │
+│     → Manual: Press \ when you want advice             │
+│     → Auto: Recommendations stream continuously        │
+│     → See decisions in terminal or Logs tab            │
 │     → You execute manually                             │
 │                                                         │
 │  5. TRAIN (optional, improves detection)               │

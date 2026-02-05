@@ -50,6 +50,8 @@ class GameRegions:
     All TFT game screen regions
     Base resolution: 2560x1664 (macOS Retina)
     Using macOS screencapture for true native pixel capture
+    
+    Loads from roi_calibration.json if available, otherwise uses defaults.
     """
     
     # Base resolution these coordinates are calibrated for (NATIVE)
@@ -60,8 +62,35 @@ class GameRegions:
     screen_width: int = 2560
     screen_height: int = 1664
     
+    # Calibration data (loaded from roi_calibration.json)
+    _calibration: dict = field(default_factory=dict, repr=False)
+    _calibration_loaded: bool = False
+    
     def __post_init__(self):
+        self._load_calibration()
         self._calculate_scale()
+    
+    def _load_calibration(self):
+        """Load calibration from roi_calibration.json if it exists"""
+        # Look for calibration file in project root
+        calibration_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'roi_calibration.json'),
+            'roi_calibration.json',
+        ]
+        
+        for path in calibration_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r') as f:
+                        self._calibration = json.load(f)
+                    self._calibration_loaded = True
+                    print(f"✓ Loaded ROI calibration from {os.path.basename(path)}")
+                    return
+                except Exception as e:
+                    print(f"⚠ Error loading calibration: {e}")
+        
+        # No calibration file found - use defaults
+        print("⚠ No roi_calibration.json found - using default regions")
     
     def _calculate_scale(self):
         self.scale_x = self.screen_width / self.base_width
@@ -72,6 +101,19 @@ class GameRegions:
         self.screen_width = width
         self.screen_height = height
         self._calculate_scale()
+    
+    def _get_calibrated_region(self, name: str, default: Region) -> Region:
+        """Get region from calibration if available, otherwise use default"""
+        if self._calibration_loaded and name in self._calibration:
+            cal = self._calibration[name]
+            return Region(
+                x=cal.get('x', default.x),
+                y=cal.get('y', default.y),
+                width=cal.get('width', default.width),
+                height=cal.get('height', default.height),
+                name=name
+            )
+        return default.scale(self.scale_x, self.scale_y)
     
     # === ROI REGIONS FOR 2560x1664 (macOS Retina) ===
     # Precise pixel coordinates - no guessing!
@@ -107,49 +149,57 @@ class GameRegions:
         return Region(1800, 0, 320, 120, "timer").scale(self.scale_x, self.scale_y)
     
     # === MAIN ROI REGIONS (for YOLO/CV pipelines) ===
-    # Exact coordinates from your spec for 2560x1664
+    # Uses calibration from roi_calibration.json if available, otherwise defaults
     
     @property
     def board(self) -> Region:
-        """Current Board - main hex board (1760x1040)"""
-        return Region(360, 120, 1760, 1040, "board").scale(self.scale_x, self.scale_y)
+        """Current Board - main hex board"""
+        default = Region(360, 120, 1760, 1040, "board")
+        return self._get_calibrated_region("board", default)
     
     @property
     def bench(self) -> Region:
-        """Bench Champions - bottom, above shop (1520x220)"""
-        return Region(360, 1180, 1520, 220, "bench").scale(self.scale_x, self.scale_y)
+        """Bench Champions - bottom, above shop"""
+        default = Region(360, 1120, 1520, 220, "bench")
+        return self._get_calibrated_region("bench", default)
     
     @property
     def shop(self) -> Region:
-        """Shop - champions, gold, reroll, buy XP (1520x264)"""
-        return Region(360, 1400, 1520, 264, "shop").scale(self.scale_x, self.scale_y)
+        """Shop - champions, gold, reroll, buy XP"""
+        default = Region(360, 1340, 1620, 324, "shop")
+        return self._get_calibrated_region("shop", default)
     
     @property
     def item_inventory(self) -> Region:
-        """Items - far left item inventory (80x1040)"""
-        return Region(0, 120, 80, 1040, "items").scale(self.scale_x, self.scale_y)
+        """Items - far left item inventory"""
+        default = Region(0, 120, 80, 1140, "items")
+        return self._get_calibrated_region("items", default)
     
     @property
     def augment_display(self) -> Region:
-        """Top HUD - round, stage, streaks, timer, augments (1760x120)"""
-        return Region(360, 0, 1760, 120, "augments").scale(self.scale_x, self.scale_y)
+        """Top HUD - round, stage, streaks, timer, augments"""
+        default = Region(360, 0, 1760, 120, "augments")
+        return self._get_calibrated_region("top_hud", default)
     
     @property
     def trait_panel(self) -> Region:
-        """Traits Panel - just right of items (260x1040)"""
-        return Region(80, 120, 260, 1040, "traits").scale(self.scale_x, self.scale_y)
+        """Traits Panel - just right of items"""
+        default = Region(80, 120, 260, 1040, "traits")
+        return self._get_calibrated_region("traits", default)
     
     # === OPPONENT INFO ===
     
     @property
     def opponent_portraits(self) -> Region:
-        """Player List - all 8 players on the right (440x1180)"""
-        return Region(2120, 120, 440, 1180, "players").scale(self.scale_x, self.scale_y)
+        """Player List - all 8 players on the right"""
+        default = Region(2120, 120, 440, 1180, "players")
+        return self._get_calibrated_region("players", default)
     
     @property
     def top_hud(self) -> Region:
-        """Top HUD - round number, stage, streaks, timer, augments (1760x120)"""
-        return Region(360, 0, 1760, 120, "top_hud").scale(self.scale_x, self.scale_y)
+        """Top HUD - round number, stage, streaks, timer, augments"""
+        default = Region(360, 0, 1760, 120, "top_hud")
+        return self._get_calibrated_region("top_hud", default)
     
     # === FULL SCREEN ===
     
@@ -173,12 +223,12 @@ class GameRegions:
     def get_7_rois(self) -> Dict[str, Region]:
         """Return the 7 main ROIs for CV/ML pipelines"""
         return {
-            "items": self.item_inventory,      # 80x1040
+            "items": self.item_inventory,      # 80x1140 (extended down)
             "traits": self.trait_panel,         # 260x1040
             "board": self.board,                # 1760x1040
             "players": self.opponent_portraits, # 440x1180
-            "bench": self.bench,                # 1520x220
-            "shop": self.shop,                  # 1520x264
+            "bench": self.bench,                # 1520x220 (pushed up)
+            "shop": self.shop,                  # 1620x324 (expanded up+right)
             "top_hud": self.top_hud,            # 1760x120
         }
     

@@ -1,11 +1,17 @@
 """
 FastAPI Server for TFT State Extraction
 Provides REST API and WebSocket for real-time state streaming
+
+Supports two modes:
+  - MANUAL: Only analyze when /analyze is called
+  - AUTO: Continuous real-time analysis
 """
 
 import asyncio
 import json
-from typing import Optional, List
+import os
+from datetime import datetime
+from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
@@ -25,17 +31,26 @@ except ImportError:
     print("Warning: bot.coach not available")
 
 
-# Global state builder instance
+# Global state
 state_builder: Optional[StateBuilder] = None
 coach: Optional['TFTCoach'] = None
 config = Config()
+
+# Mode: "manual" or "auto"
+MODE = os.environ.get('TFT_MODE', 'manual')
+
+# Latest analysis result (for manual mode)
+latest_analysis: Optional[Dict[str, Any]] = None
+analysis_event = asyncio.Event()  # Signals new analysis available
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage state builder lifecycle"""
-    global state_builder, coach
+    global state_builder, coach, MODE
     print("Initializing State Extraction API...")
+    print(f"Mode: {'📸 MANUAL' if MODE == 'manual' else '🤖 AUTO'}")
+    
     state_builder = StateBuilder(config)
     
     # Initialize AI Coach
@@ -88,6 +103,7 @@ async def get_status():
     
     return {
         "status": "online",
+        "mode": MODE,
         "extraction_methods": {
             "ocr": {
                 "available": True,
@@ -107,8 +123,85 @@ async def get_status():
                 "description": "Object detection for board/bench champions"
             }
         },
-        "coach_available": COACH_AVAILABLE and coach is not None
+        "coach_available": COACH_AVAILABLE and coach is not None,
+        "latest_analysis": latest_analysis is not None
     }
+
+
+@app.post("/analyze")
+async def trigger_analysis(save_screenshot: bool = True):
+    """
+    Trigger a manual analysis (for manual mode)
+    
+    Captures screenshot, runs coach analysis, and broadcasts to WebSocket.
+    
+    Args:
+        save_screenshot: Whether to save the screenshot to disk
+    """
+    global latest_analysis
+    
+    if not state_builder:
+        raise HTTPException(status_code=503, detail="State builder not initialized")
+    
+    if not COACH_AVAILABLE or not coach:
+        raise HTTPException(status_code=503, detail="Coach not available")
+    
+    try:
+        # Capture and analyze
+        state = state_builder.build_state_full()
+        state_dict = state.to_dict()
+        
+        # Run coach
+        decision = coach.analyze(state_dict)
+        
+        # Save screenshot if requested
+        screenshot_path = None
+        if save_screenshot:
+            try:
+                import cv2
+                from pathlib import Path
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                screenshot_dir = Path("screenshots/manual")
+                screenshot_dir.mkdir(parents=True, exist_ok=True)
+                
+                frame = state_builder.capture.capture_full_screen()
+                if frame:
+                    screenshot_path = str(screenshot_dir / f"{timestamp}_full.png")
+                    cv2.imwrite(screenshot_path, frame.image)
+                    
+                    # Also save state JSON
+                    state_json_path = screenshot_dir / f"{timestamp}_state.json"
+                    with open(state_json_path, 'w') as f:
+                        json.dump(state_dict, f, indent=2, default=str)
+            except Exception as e:
+                print(f"Screenshot save error: {e}")
+        
+        # Build result
+        result = {
+            "timestamp": datetime.now().isoformat(),
+            "type": "manual_analysis",
+            "game_state": state_dict,
+            "decision": decision.to_dict(),
+            "screenshot_path": screenshot_path
+        }
+        
+        # Store for WebSocket broadcast
+        latest_analysis = result
+        analysis_event.set()  # Signal WebSocket clients
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/latest")
+async def get_latest_analysis():
+    """Get the most recent analysis result (manual mode)"""
+    if latest_analysis is None:
+        raise HTTPException(status_code=404, detail="No analysis yet. Call POST /analyze first.")
+    return latest_analysis
 
 
 @app.get("/state")
@@ -308,6 +401,9 @@ async def websocket_state(websocket: WebSocket, fps: int = 5, mode: str = "fast"
     """
     WebSocket endpoint for real-time state streaming
     
+    In MANUAL mode: Returns last analysis or placeholder (no continuous capture)
+    In AUTO mode: Continuous real-time capture
+    
     Args:
         fps: Updates per second (1-30)
         mode: "fast" or "full"
@@ -321,26 +417,50 @@ async def websocket_state(websocket: WebSocket, fps: int = 5, mode: str = "fast"
         while True:
             if state_builder:
                 try:
-                    if mode == "full":
-                        state = state_builder.build_state_full()
+                    # In manual mode, return last analysis or placeholder
+                    if MODE == "manual":
+                        if latest_analysis and "game_state" in latest_analysis:
+                            await websocket.send_text(json.dumps(latest_analysis["game_state"]))
+                        else:
+                            await websocket.send_text(json.dumps({
+                                "mode": "manual",
+                                "message": "Press hotkey to analyze",
+                                "player": {"health": "--", "gold": "--", "level": "--"},
+                                "stage": {"current": "--"}
+                            }))
                     else:
-                        state = state_builder.build_state_fast()
-                    
-                    await websocket.send_text(state.to_json())
+                        # Auto mode: continuous capture
+                        if mode == "full":
+                            state = state_builder.build_state_full()
+                        else:
+                            state = state_builder.build_state_fast()
+                        await websocket.send_text(state.to_json())
+                except WebSocketDisconnect:
+                    break
                 except Exception as e:
-                    await websocket.send_text(json.dumps({"error": str(e)}))
+                    try:
+                        await websocket.send_text(json.dumps({"error": str(e)}))
+                    except:
+                        break
             
             await asyncio.sleep(interval)
     
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        try:
+            manager.disconnect(websocket)
+        except:
+            pass
 
 
 @app.websocket("/ws/changes")
 async def websocket_changes(websocket: WebSocket):
     """
     WebSocket endpoint that only sends state changes
-    More efficient for tracking game events
+    
+    In MANUAL mode: No continuous capture, just keeps connection alive
+    In AUTO mode: Continuous change detection
     """
     await manager.connect(websocket)
     
@@ -348,6 +468,11 @@ async def websocket_changes(websocket: WebSocket):
     
     try:
         while True:
+            # In manual mode, just keep connection alive without capturing
+            if MODE == "manual":
+                await asyncio.sleep(1.0)
+                continue
+            
             if state_builder:
                 try:
                     current_state = state_builder.build_state_fast()
@@ -362,13 +487,23 @@ async def websocket_changes(websocket: WebSocket):
                             }))
                     
                     last_state = current_state
+                except WebSocketDisconnect:
+                    break
                 except Exception as e:
-                    await websocket.send_text(json.dumps({"error": str(e)}))
+                    try:
+                        await websocket.send_text(json.dumps({"error": str(e)}))
+                    except:
+                        break
             
             await asyncio.sleep(0.2)  # 5 Hz for change detection
     
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        try:
+            manager.disconnect(websocket)
+        except:
+            pass
 
 
 @app.websocket("/ws/decisions")
@@ -376,60 +511,124 @@ async def websocket_decisions(websocket: WebSocket, fps: int = 2):
     """
     WebSocket endpoint for AI Coach decision streaming
     
-    Streams live decisions to the frontend dashboard.
+    Behavior depends on mode:
+    - MANUAL: Waits for /analyze to be called, then sends result
+    - AUTO: Continuous real-time analysis
     
     Args:
-        fps: Decision updates per second (1-5, default 2)
+        fps: Decision updates per second (1-5, default 2) - only used in auto mode
     """
+    global analysis_event
+    
     await manager.connect(websocket)
     
-    fps = max(1, min(5, fps))
-    interval = 1.0 / fps
-    
-    last_decision_hash = None
-    
+    # Send initial status
     try:
-        while True:
-            if state_builder and COACH_AVAILABLE and coach:
+        await websocket.send_text(json.dumps({
+            "type": "connected",
+            "mode": MODE,
+            "message": f"Connected in {MODE} mode"
+        }))
+    except:
+        return
+    
+    if MODE == "manual":
+        # MANUAL MODE: Wait for analysis triggers
+        try:
+            while True:
+                # Wait for analysis event or timeout for heartbeat
                 try:
-                    # Get current game state
-                    current_state = state_builder.build_state_fast()
+                    await asyncio.wait_for(analysis_event.wait(), timeout=5.0)
+                    analysis_event.clear()
                     
-                    # Get coach decision
-                    decision = coach.analyze(current_state.to_dict())
-                    
-                    # Only send if decision changed (avoid spam)
-                    decision_dict = decision.to_dict()
-                    decision_hash = f"{decision_dict['decision']['action']}_{decision_dict['decision']['target']}"
-                    
-                    if decision_hash != last_decision_hash:
+                    # Send the latest analysis
+                    if latest_analysis:
                         await websocket.send_text(json.dumps({
                             "type": "decision",
-                            **decision_dict
+                            **latest_analysis.get("decision", {})
                         }))
-                        last_decision_hash = decision_hash
-                    else:
-                        # Send heartbeat with same decision
+                except asyncio.TimeoutError:
+                    # Send heartbeat
+                    try:
                         await websocket.send_text(json.dumps({
                             "type": "heartbeat",
-                            "timestamp": decision_dict["timestamp"]
+                            "mode": "manual",
+                            "timestamp": datetime.now().isoformat()
                         }))
-                    
-                except Exception as e:
-                    await websocket.send_text(json.dumps({
-                        "type": "error",
-                        "error": str(e)
-                    }))
-            else:
-                await websocket.send_text(json.dumps({
-                    "type": "error",
-                    "error": "Coach or state builder not available"
-                }))
-            
-            await asyncio.sleep(interval)
+                    except:
+                        break
+                except WebSocketDisconnect:
+                    break
+        
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+        finally:
+            try:
+                manager.disconnect(websocket)
+            except:
+                pass
     
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+    else:
+        # AUTO MODE: Continuous analysis
+        fps = max(1, min(5, fps))
+        interval = 1.0 / fps
+        last_decision_hash = None
+        
+        try:
+            while True:
+                if state_builder and COACH_AVAILABLE and coach:
+                    try:
+                        # Get current game state
+                        current_state = state_builder.build_state_fast()
+                        
+                        # Get coach decision
+                        decision = coach.analyze(current_state.to_dict())
+                        
+                        # Only send if decision changed (avoid spam)
+                        decision_dict = decision.to_dict()
+                        decision_hash = f"{decision_dict['decision']['action']}_{decision_dict['decision']['target']}"
+                        
+                        if decision_hash != last_decision_hash:
+                            await websocket.send_text(json.dumps({
+                                "type": "decision",
+                                **decision_dict
+                            }))
+                            last_decision_hash = decision_hash
+                        else:
+                            # Send heartbeat with same decision
+                            await websocket.send_text(json.dumps({
+                                "type": "heartbeat",
+                                "timestamp": decision_dict["timestamp"]
+                            }))
+                        
+                    except WebSocketDisconnect:
+                        break
+                    except Exception as e:
+                        try:
+                            await websocket.send_text(json.dumps({
+                                "type": "error",
+                                "error": str(e)
+                            }))
+                        except:
+                            break
+                else:
+                    try:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "error": "Coach or state builder not available"
+                        }))
+                    except:
+                        break
+                
+                await asyncio.sleep(interval)
+        
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+        finally:
+            try:
+                manager.disconnect(websocket)
+            except:
+                pass
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8000):

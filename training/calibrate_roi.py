@@ -36,12 +36,12 @@ class ROICalibrator:
     # Standard TFT ROI ratios (relative to game window size)
     # Based on 2560x1664 reference resolution
     ROI_RATIOS = {
-        "items": {"x": 0, "y": 0.072, "w": 0.031, "h": 0.625},
-        "traits": {"x": 0.031, "y": 0.072, "w": 0.102, "h": 0.625},
+        "items": {"x": 0, "y": 0.072, "w": 0.031, "h": 0.685},      # Extended down
+        "traits": {"x": 0.031, "y": 0.072, "w": 0.102, "h": 0.685}, # Extended down
         "board": {"x": 0.141, "y": 0.072, "w": 0.687, "h": 0.625},
         "players": {"x": 0.828, "y": 0.072, "w": 0.172, "h": 0.709},
-        "bench": {"x": 0.141, "y": 0.709, "w": 0.594, "h": 0.132},
-        "shop": {"x": 0.141, "y": 0.841, "w": 0.594, "h": 0.159},
+        "bench": {"x": 0.141, "y": 0.673, "w": 0.594, "h": 0.132},  # Pushed up
+        "shop": {"x": 0.141, "y": 0.805, "w": 0.633, "h": 0.195},   # Pushed up + extended right
         "top_hud": {"x": 0.141, "y": 0, "w": 0.687, "h": 0.072},
     }
     

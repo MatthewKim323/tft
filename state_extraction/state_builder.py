@@ -166,7 +166,7 @@ class StateBuilder:
             try:
                 # Capture regions for template matching
                 shop_frame = self.capture.capture_region("shop")
-                items_frame = self.capture.capture_region("item_inventory")
+                items_frame = self.capture.capture_region("items")
                 
                 # Shop detection via template matching
                 if shop_frame and self.template_matcher.champion_templates:
